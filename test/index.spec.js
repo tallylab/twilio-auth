@@ -2,6 +2,10 @@ const assert = require('assert')
 const fetch = require('node-fetch')
 
 const { start } = require('../src')
+const headers = {
+  'Accept': 'application/json',
+  'Content-Type': 'application/json'
+}
 
 describe('Workflow', function () {
   this.timeout(10000)
@@ -17,10 +21,7 @@ describe('Workflow', function () {
     process.env.SALT = 'xxxx'
 
     const res = await fetch(`${BASE_URL}/login`, {
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      },
+      headers: headers,
       method: 'POST',
       body: JSON.stringify({
         phoneNumber: "+19991234567"
@@ -32,5 +33,14 @@ describe('Workflow', function () {
   })
 
   it('errors on an invalid phone number', async () => {
+    process.env.SALT = 'xxxxx'
+
+    const res = await fetch(`${BASE_URL}/login`, {
+      headers: headers,
+      method: 'POST',
+      body: JSON.stringify({
+        phoneNumber: "+1966"
+      })
+    })
   })
 })

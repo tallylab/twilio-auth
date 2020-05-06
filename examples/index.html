@@ -12,42 +12,39 @@
     <h1>Twilio Auth Examples</h1>
 
     <script>
+      const headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+
       window.submitVerification = function(form) {
-        const telephoneNumber = form.elements[0].value
+        const to = form.elements[0].value
 
         fetch("http://127.0.0.1:3000/verify", {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
+          headers,
           method: 'POST',
-          body: JSON.stringify({
-            phoneNumber: telephoneNumber
-          })
+          body: JSON.stringify({ to })
         })
+          .then((res) => {
+            // TODO: Proper error handling
+            if (res.status !== 200) return;
 
-        // TODO: Keep phone number in field
-        // TODO: Error handling
-        document.querySelector('#step1').style.display = 'none';
-        document.querySelector('#step2').style.display = 'block';
+            // TODO: Keep phone number in field
+            document.querySelector('#step1').style.display = 'none';
+            document.querySelector('#step2').style.display = 'block';
+          })
 
         return false;
       }
 
       window.submitCode = function(form) {
-        const telephoneNumber = form.elements[0].value
-        const verificationCode = form.elements[1].value
+        const to = form.elements[0].value
+        const code = form.elements[1].value
 
         fetch("http://127.0.0.1:3000/login", {
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          },
+          headers,
           method: 'POST',
-          body: JSON.stringify({
-            phoneNumber: telephoneNumber,
-            verificationCode: verificationCode
-          })
+          body: JSON.stringify({ to, code })
         })
 
         return false;

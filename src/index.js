@@ -1,67 +1,45 @@
 require('dotenv').config()
-const { SALT, TWILIO_FROM_NUMBER } = process.env
-const HTTP_HOST = process.env.HTTP_HOST || '127.0.0.1'
-const HTTP_PORT = process.env.HTTP_PORT || 3000
+const { SALT, TWILIO_FROM_NUMBER, HTTP_HOST, HTTP_PORT } = process.env
 
 const CryptoJS = require('crypto-js')
-const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
-
-// TODO: Doc
 const express = require('express')
+const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
+const RestException = require('twilio/lib/base/RestException')
+
 const start = async() => {
   const app = express()
   app.use(require('body-parser').json())
   app.use(express.static('examples'))
 
-  const { client, nacl, verificationService } = await require('./init')()
+  const { client, nacl, verifications, verificationChecks } = await require('./init')()
 
-  app.post('/verify', async function(req, res) {
+  app.post('/verify', async function(req, res, next) {
     try {
-      const numberToVerify = req.body.phoneNumber
-      const { sid, status } = verificationService.verifications
-        .create({to: numberToVerify, channel: 'sms'})
+      const { to } = req.body
+      const { sid, status } = await verifications.create({ to, channel: 'sms'})
       res.json({ sid, status })
-    } catch (e) {
-      // TODO: Proper error handling
-      console.error(e)
-      res.status(500).end('There was an error')
-    }
+    } catch (err) { next(err) }
   })
 
   app.post('/login', async function (req, res, next) {
-    const toNumber = req.body.phoneNumber
-    const verificationCode = req.body.verificationCode
-
     try {
-      const verification = await verificationService.verificationChecks
-        .create({ to: toNumber, code: verificationCode })
-      if (verification.valid === false) return res.status(500).end("error")
+      const { to, code } = req.body
+      const { status } = await verificationChecks.create({ to, code })
+      if (status === 'denied') return res.status(403).end("Verification Failed")
       next()
-    } catch (e) {
-      // TODO: Proper error handling
-      console.error(e)
-      res.status(500).end('There was an error')
-    }
-  }, async function(req, res) {
+    } catch (err) { next(err) }
+  }, async function(req, res, next) {
     const toNumber = req.body.phoneNumber
     try {
       const idProvider = new TallyLabIdentities().TallyLabIdentityProvider
-
       const hash = CryptoJS.SHA256(toNumber + SALT)
       let buffer = Buffer.from(hash.toString(CryptoJS.enc.Hex), 'hex')
       const tlKeys = idProvider.keygen(nacl, buffer)
-
       res.json(tlKeys)
-    } catch (e) {
-      // TODO: Proper error handling
-      console.error(e)
-      res.status(500).end('Error: SMS message not sent')
-    }
+    } catch (e) { next(e) }
   })
 
   app.listen(HTTP_PORT, HTTP_HOST, () => {});
-
-  return { HTTP_HOST, HTTP_PORT }
 }
 
 module.exports = { start }

@@ -3,11 +3,11 @@ const { SALT, TWILIO_FROM_NUMBER } = process.env
 const HTTP_HOST = process.env.HTTP_HOST || '127.0.0.1'
 const HTTP_PORT = process.env.HTTP_PORT || 3000
 
-const express = require('express')
-const multihashing = require('multihashing-async')
+const CryptoJS = require('crypto-js')
 const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
 
 // TODO: Doc
+const express = require('express')
 const start = async() => {
   const app = express()
   app.use(require('body-parser').json())
@@ -18,12 +18,11 @@ const start = async() => {
   app.post('/verify', async function(req, res) {
     try {
       const numberToVerify = req.body.phoneNumber
-
-      const { sid, status } = await client.verify.services(verificationService.sid)
-        .verifications.create({to: numberToVerify, channel: 'sms'})
-
+      const { sid, status } = verificationService.verifications
+        .create({to: numberToVerify, channel: 'sms'})
       res.json({ sid, status })
     } catch (e) {
+      // TODO: Proper error handling
       console.error(e)
       res.status(500).end('There was an error')
     }
@@ -34,11 +33,12 @@ const start = async() => {
     const verificationCode = req.body.verificationCode
 
     try {
-      const verification = await client.verify.services(verificationService.sid)
-        .verificationChecks.create({ to: toNumber, code: verificationCode })
+      const verification = await verificationService.verificationChecks
+        .create({ to: toNumber, code: verificationCode })
       if (verification.valid === false) return res.status(500).end("error")
       next()
     } catch (e) {
+      // TODO: Proper error handling
       console.error(e)
       res.status(500).end('There was an error')
     }
@@ -47,14 +47,13 @@ const start = async() => {
     try {
       const idProvider = new TallyLabIdentities().TallyLabIdentityProvider
 
-      // TODO: Hash the phone number + salt to 32 bytes
-      // const hash = await multihashing(Buffer.from(toNumber + process.env.SALT), 'sha2-256')
-      const hash = 'thisisexactlythirtytwocharacters'
-      // console.log(hash.length, hash.toString().length)
-      const tlKeys = idProvider.keygen(nacl, hash.toString())
+      const hash = CryptoJS.SHA256(toNumber + SALT)
+      let buffer = Buffer.from(hash.toString(CryptoJS.enc.Hex), 'hex')
+      const tlKeys = idProvider.keygen(nacl, buffer)
 
       res.json(tlKeys)
     } catch (e) {
+      // TODO: Proper error handling
       console.error(e)
       res.status(500).end('Error: SMS message not sent')
     }

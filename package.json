@@ -27,5 +27,11 @@
     "orbit-db-keystore": "^0.3.4",
     "tallylab-orbitdb-identity-provider": "github:tallylab/tallylab-orbitdb-identity-provider#master",
     "twilio": "^3.43.0"
+  },
+  "devDependencies": {
+    "standard": "^14.3.3"
+  },
+  "standard": {
+    "env": "mocha"
   }
 }

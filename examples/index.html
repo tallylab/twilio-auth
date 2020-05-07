@@ -5,7 +5,7 @@
 
     <style>
       label { display: block; }
-      #step2 { display: none; }
+      #step2, #step3a, #step3b { display: none; }
     </style>
 
     <script>
@@ -80,7 +80,33 @@
         return false;
       }
 
-      document.addEventListener('identity-v1-success', (e,f,b) => {
+      document.addEventListener('identity-v1-success', (e) => {
+        document.querySelector('#step2').style.display = 'none';
+
+        if(e.detail.lastEntry.length === 0) {
+          document.querySelector('#step3a').style.display = 'block';
+
+          localStorage.setItem('key1', Math.random() * 1000)
+          localStorage.setItem('key2', Math.random() * 1000)
+          localStorage.setItem('key3', Math.random() * 1000)
+
+          worker.postMessage({
+            type: 'snapshot-v1',
+            payload: {
+              key1: localStorage.getItem('key1'),
+              key2: localStorage.getItem('key2'),
+              key3: localStorage.getItem('key3')
+            }
+          })
+        } else {
+          document.querySelector('#step3b').style.display = 'block';
+          document.querySelector('#foundData').innerHTML =
+            JSON.stringify(e.detail.lastEntry[0].payload.value)
+        }
+      })
+
+      document.addEventListener('snapshot-v1-success', (e) => {
+        console.log(e.detail)
       })
     </script>
 
@@ -103,5 +129,15 @@
 
       <input type="submit" value="Submit" />
     </form>
+
+    <div id="step3a">
+      No data found! Writing some random data to localStorage
+      and sending the snapshot to OrbitDB.
+    </div>
+
+    <div id="step3b">
+      Found data. The last snapshot of the DB was:
+      <pre id="foundData"></pre>
+    </div>
   </body>
 </html>

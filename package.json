@@ -4,7 +4,7 @@
   "description": "> 2(-1) Factor Auth for Distributed Systems using Twilio",
   "main": "./src/index.js",
   "scripts": {
-    "start": "node -e \"require('./src/').start()\"",
+    "start": "node src/index.js",
     "test": "echo no tests"
   },
   "repository": {

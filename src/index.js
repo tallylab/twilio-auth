@@ -32,7 +32,7 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
       const hash = CryptoJS.SHA256(toNumber + SALT)
       const buffer = Buffer.from(hash.toString(CryptoJS.enc.Hex), 'hex')
       const tlKeys = idProvider.keygen(nacl, buffer)
-      res.json(tlKeys)
+      res.json(tlKeys.stringCompatible)
     } catch (e) { next(e) }
   }
 

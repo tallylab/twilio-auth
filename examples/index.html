@@ -8,7 +8,58 @@
       #step2, #step3a, #step3b { display: none; }
     </style>
 
+    <script src="./worker/worker/nacl_factory.js"></script>
     <script>
+      nacl_factory.instantiate(nacl => {
+        window.decrypt = function (encryptedObj, keypair) {
+          var publicKey, privateKey;
+
+          if(typeof keypair !== "undefined") {
+            publicKey = keypair.publicKey
+            privateKey = keypair.privateKey
+          } else {
+            privateKey = this.identity.private
+            publicKey = this.identity.public
+          }
+
+          var packet = JSON.parse(encryptedObj);
+          var decoded = nacl.crypto_box_open(
+            Uint8Array.from(packet.cryptobox.split(',')),
+            Uint8Array.from(packet.nonce.split(',')),
+            publicKey,
+            privateKey
+          );
+
+          var decodedValue = null;
+          try {
+            decodedValue = JSON.parse(nacl.decode_utf8(decoded));
+          } catch (e) {
+            decodedValue = nacl.decode_utf8(decoded);
+          }
+          return decodedValue;
+        } // decrypt
+
+        window.encrypt = function (value, keypair) {
+          var publicKey, privateKey;
+
+          if(!value) return;
+
+          if(typeof keypair !== "undefined") {
+            publicKey = keypair.publicKey
+            privateKey = keypair.privateKey
+          } else {
+            privateKey = this.identity.private
+            publicKey = this.identity.public
+          }
+
+          var encoded = nacl.encode_utf8(value);
+          var nonce = nacl.crypto_box_random_nonce();
+          var cryptobox = nacl.crypto_box(encoded, nonce, publicKey, privateKey);
+          return JSON.stringify({ cryptobox: cryptobox.toString(), nonce: nonce.toString() });
+        } // encrypt
+      })
+
+      // Load the worker
       const worker = new Worker('./worker/worker/worker.js')
 
       // A simple catchall to transliterate worker messages to document events, should make it easy
@@ -61,11 +112,9 @@
             // TODO: Proper error handling
             if (res.status !== 200) return;
 
-            const rawKeys = await res.json()
             const uintify = (string) => Uint8Array.from(string.split(','))
-            worker.postMessage({
-              type: 'identity-v1',
-              payload: {
+            const rawKeys = await res.json()
+            window.myKeys = {
                 signing: {
                   signPk: uintify(rawKeys.signing.signPk),
                   signSk: uintify(rawKeys.signing.signSk),
@@ -74,6 +123,9 @@
                 privateKey: uintify(rawKeys.privateKey),
                 securityVersion: rawKeys.securityVersion
               }
+            worker.postMessage({
+              type: 'identity-v1',
+              payload: window.myKeys
             })
           })
 
@@ -92,16 +144,16 @@
 
           worker.postMessage({
             type: 'snapshot-v1',
-            payload: {
+            payload: encrypt(JSON.stringify({
               key1: localStorage.getItem('key1'),
               key2: localStorage.getItem('key2'),
               key3: localStorage.getItem('key3')
-            }
+            }), window.myKeys)
           })
         } else {
           document.querySelector('#step3b').style.display = 'block';
           document.querySelector('#foundData').innerHTML =
-            JSON.stringify(e.detail.lastEntry[0].payload.value)
+            JSON.stringify(decrypt(e.detail.lastEntry[0].payload.value, window.myKeys))
         }
       })
 

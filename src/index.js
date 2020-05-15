@@ -1,6 +1,7 @@
 require('dotenv').config()
 const { SALT, HTTP_HOST, HTTP_PORT } = process.env
 
+const cors = require('cors')
 const CryptoJS = require('crypto-js')
 const express = require('express')
 const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
@@ -37,6 +38,7 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
   }
 
   const app = express()
+  app.use(cors())
   app.use(require('body-parser').json())
   app.use(express.static('examples'))
   app.post('/verify', verify)

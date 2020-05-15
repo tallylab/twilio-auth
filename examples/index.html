@@ -8,6 +8,13 @@
       #step2, #step3a, #step3b { display: none; }
     </style>
 
+    <script>
+      // Constants
+      window.HTTP_API_HOST = 'localhost'
+      window.HTTP_API_PORT = '3001'
+      window.PINNING_ADDR = '/ip4/localhost/tcp/4003/ws/p2p/QmXXXX'
+    </script>
+
     <script src="./worker/worker/nacl_factory.js"></script>
     <script>
       nacl_factory.instantiate(nacl => {
@@ -62,6 +69,11 @@
       // Load the worker
       const worker = new Worker('./worker/worker/worker.js')
 
+      worker.postMessage({
+        type: 'pinning-service-v1',
+        payload: window.PINNING_ADDR
+      })
+
       // A simple catchall to transliterate worker messages to document events, should make it easy
       worker.onmessage = (event) => {
         const message = event.data
@@ -81,7 +93,7 @@
       window.submitVerification = function(form) {
         const to = form.elements[0].value
 
-        fetch("http://localhost:3000/verify", {
+        fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/verify`, {
           headers,
           method: 'POST',
           body: JSON.stringify({ to })
@@ -104,7 +116,7 @@
         const to = form.elements[0].value
         const code = form.elements[1].value
 
-        fetch("http://localhost:3000/login", {
+        fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/login`, {
           headers,
           method: 'POST',
           body: JSON.stringify({ to, code })

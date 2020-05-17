@@ -178,6 +178,11 @@
       document.addEventListener('state-v1', (e) => {
         clearTimeout(localDataTimeout)
         const state = decrypt(e.detail.lastEntry[0].payload.value, window.myKeys)
+
+        Object.keys(state).map(key => {
+          localStorage.setItem(key, state[key])
+        })
+
         document.querySelector('#foundData').innerHTML = JSON.stringify(state)
 
         if(document.querySelector('#step3d').style.display !== 'block') {

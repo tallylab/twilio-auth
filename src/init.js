@@ -14,9 +14,12 @@ const initNaCl = async () => {
 // Export async initialization function
 module.exports = async () => {
   const nacl = await initNaCl()
-  const { sid } = await client.verify.services.create({
+
+  const sid = process.env.TWILIO_VERIFY_SID || (await client.verify.services.create({
     friendlyName: process.env.APP_NAME || 'twilio-auth testing'
-  })
+  })).sid
+
+  console.log(sid)
 
   const { verifications, verificationChecks } = await client.verify.services(sid)
   return { client, nacl, verifications, verificationChecks }

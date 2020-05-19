@@ -20,17 +20,18 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
   async function checkVerification (req, res, next) {
     try {
       const { to, code } = req.body
-      const { status } = await verificationChecks.create({ to, code })
-      if (status === 'denied') return res.status(403).end('Verification Failed')
+      const { valid } = await verificationChecks.create({ to, code })
+      if (!valid) return res.status(403).end('Verification Failed')
       next()
     } catch (err) { next(err) }
   }
 
   async function generateKeys (req, res, next) {
     try {
-      const toNumber = req.body.phoneNumber
+      const { to } = req.body
       const idProvider = new TallyLabIdentities().TallyLabIdentityProvider
-      const hash = CryptoJS.SHA256(toNumber + SALT)
+      console.log(to, SALT, to + SALT)
+      const hash = CryptoJS.SHA256(to + SALT)
       const buffer = Buffer.from(hash.toString(CryptoJS.enc.Hex), 'hex')
       const tlKeys = idProvider.keygen(nacl, buffer)
       res.json(tlKeys.stringCompatible)

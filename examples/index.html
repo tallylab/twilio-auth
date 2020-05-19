@@ -5,8 +5,20 @@
 
     <style>
       label { display: block; }
-      #step2, #step3a, #step3b { display: none; }
+      #step2, #step3a, #step3b, #step3c, #step3d, #step3e, #step4 { display: none; }
+      #step4 { margin-top: 1em }
     </style>
+
+    <script>
+      // Constants for configuration
+      window.HTTP_API_HOST = '73.69.77.29'
+      window.HTTP_API_PORT = '3001'
+      window.PINNING_ADDR = '/ip4/73.69.77.29/tcp/4003/ws/p2p/QmUJoN966mA4pvXKCm96jNjcFwdjn4Ks6V2Uq6ARVkS27g'
+      window.HTTP_API_HEADERS = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    </script>
 
     <script src="./worker/worker/nacl_factory.js"></script>
     <script>
@@ -62,10 +74,29 @@
       // Load the worker
       const worker = new Worker('./worker/worker/worker.js')
 
+      worker.postMessage({
+        type: 'pinning-service-v1',
+        payload: window.PINNING_ADDR
+      })
+
       // A simple catchall to transliterate worker messages to document events, should make it easy
       worker.onmessage = (event) => {
         const message = event.data
         document.dispatchEvent(new CustomEvent(message.type, { detail: message.payload }));
+      }
+
+      function createRandomLocalStorageData() {
+        localStorage.setItem('key1', Math.random() * 1000)
+        localStorage.setItem('key2', Math.random() * 1000)
+        localStorage.setItem('key3', Math.random() * 1000)
+
+        const randomData = JSON.stringify({
+          key1: localStorage.getItem('key1'),
+          key2: localStorage.getItem('key2'),
+          key3: localStorage.getItem('key3')
+        })
+
+        return randomData
       }
     </script>
   </head>
@@ -73,16 +104,11 @@
     <h1>Twilio Auth Examples</h1>
 
     <script>
-      const headers = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-
       window.submitVerification = function(form) {
         const to = form.elements[0].value
 
-        fetch("http://localhost:3000/verify", {
-          headers,
+        fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/verify`, {
+          headers: window.HTTP_API_HEADERS,
           method: 'POST',
           body: JSON.stringify({ to })
         })
@@ -104,8 +130,8 @@
         const to = form.elements[0].value
         const code = form.elements[1].value
 
-        fetch("http://localhost:3000/login", {
-          headers,
+        fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/login`, {
+          headers: window.HTTP_API_HEADERS,
           method: 'POST',
           body: JSON.stringify({ to, code })
         })
@@ -133,67 +159,61 @@
         return false;
       }
 
-      document.addEventListener('identity-v1-success', (e) => {
+      let localDataTimeout
+      document.addEventListener('authenticated-v1', (e) => {
         document.querySelector('#step2').style.display = 'none';
+        document.querySelector('#step3a').style.display = 'block';
 
-        if(e.detail.lastEntry.length === 0) {
-          document.querySelector('#step3a').style.display = 'block';
-
-          localStorage.setItem('key1', Math.random() * 1000)
-          localStorage.setItem('key2', Math.random() * 1000)
-          localStorage.setItem('key3', Math.random() * 1000)
+        localDataTimeout = setTimeout(() => {
+          document.querySelector('#step3d').style.display = 'block';
+          const randomData = createRandomLocalStorageData()
 
           worker.postMessage({
             type: 'snapshot-v1',
-            payload: encrypt(JSON.stringify({
-              key1: localStorage.getItem('key1'),
-              key2: localStorage.getItem('key2'),
-              key3: localStorage.getItem('key3')
-            }), window.myKeys)
+            payload: encrypt(randomData, window.myKeys)
           })
-        } else {
+        }, 10000)
+      })
+
+      document.addEventListener('state-v1', (e) => {
+        clearTimeout(localDataTimeout)
+        const state = decrypt(e.detail.lastEntry[0].payload.value, window.myKeys)
+
+        Object.keys(state).map(key => {
+          localStorage.setItem(key, state[key])
+        })
+
+        document.querySelector('#foundData').innerHTML = JSON.stringify(state)
+
+        if(document.querySelector('#step3d').style.display !== 'block') {
           document.querySelector('#step3b').style.display = 'block';
-          document.querySelector('#foundData').innerHTML =
-            JSON.stringify(decrypt(e.detail.lastEntry[0].payload.value, window.myKeys))
         }
+
+        document.querySelector('#step4').style.display = 'block';
       })
 
-      document.addEventListener('snapshot-v1-success', (e) => {
-        console.log(e.detail)
-      })
-
-      document.addEventListener('replicated-v1-success', (e) => {
-        console.log(e.detail)
-      })
+      document.addEventListener('error-v1', (e) => { console.error(e.detail) })
     </script>
 
     <form id="step1" onsubmit="return submitVerification(this)">
-      <label>Input number for verification
-        <input type="tel" value="" />
-      </label>
-
+      <label>Input number for verification <input type="tel" value="" /></label>
       <input type="submit" value="Submit" />
     </form>
 
     <form id="step2" onsubmit="return submitCode(this)">
-      <label>Input number for verification
-        <input type="tel" value="" />
-      </label>
-
-      <label>Enter code
-        <input type="number" value="" />
-      </label>
-
+      <label>Input number for verification <input type="tel" value="" /></label>
+      <label>Enter code<input type="number" value="" /></label>
       <input type="submit" value="Submit" />
     </form>
 
-    <div id="step3a">
-      No data found! Writing some random data to localStorage
-      and sending the snapshot to OrbitDB.
+    <div id="step3a">Success! Looking for your data...</div>
+    <div id="step3b">...data found!</div>
+    <div id="step3d">
+      ...no data found! Writing some random data to
+      localStorage and sending the snapshot to OrbitDB.
     </div>
-
-    <div id="step3b">
-      Found data. The last snapshot of the DB was:
+    <div id="step4">
+      The last snapshot of the DB was:
       <pre id="foundData"></pre>
     </div>
   </body>

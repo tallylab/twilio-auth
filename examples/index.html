@@ -11,92 +11,11 @@
 
     <script>
       // Constants for configuration
-      window.HTTP_API_HOST = '73.69.77.29'
-      window.HTTP_API_PORT = '3001'
-      window.PINNING_ADDR = '/ip4/73.69.77.29/tcp/4003/ws/p2p/QmUJoN966mA4pvXKCm96jNjcFwdjn4Ks6V2Uq6ARVkS27g'
+      window.HTTP_API_HOST = 'localhost'
+      window.HTTP_API_PORT = '3000'
       window.HTTP_API_HEADERS = {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
-      }
-    </script>
-
-    <script src="./worker/worker/nacl_factory.js"></script>
-    <script>
-      nacl_factory.instantiate(nacl => {
-        window.decrypt = function (encryptedObj, keypair) {
-          var publicKey, privateKey;
-
-          if(typeof keypair !== "undefined") {
-            publicKey = keypair.publicKey
-            privateKey = keypair.privateKey
-          } else {
-            privateKey = this.identity.private
-            publicKey = this.identity.public
-          }
-
-          var packet = JSON.parse(encryptedObj);
-          var decoded = nacl.crypto_box_open(
-            Uint8Array.from(packet.cryptobox.split(',')),
-            Uint8Array.from(packet.nonce.split(',')),
-            publicKey,
-            privateKey
-          );
-
-          var decodedValue = null;
-          try {
-            decodedValue = JSON.parse(nacl.decode_utf8(decoded));
-          } catch (e) {
-            decodedValue = nacl.decode_utf8(decoded);
-          }
-          return decodedValue;
-        } // decrypt
-
-        window.encrypt = function (value, keypair) {
-          var publicKey, privateKey;
-
-          if(!value) return;
-
-          if(typeof keypair !== "undefined") {
-            publicKey = keypair.publicKey
-            privateKey = keypair.privateKey
-          } else {
-            privateKey = this.identity.private
-            publicKey = this.identity.public
-          }
-
-          var encoded = nacl.encode_utf8(value);
-          var nonce = nacl.crypto_box_random_nonce();
-          var cryptobox = nacl.crypto_box(encoded, nonce, publicKey, privateKey);
-          return JSON.stringify({ cryptobox: cryptobox.toString(), nonce: nonce.toString() });
-        } // encrypt
-      })
-
-      // Load the worker
-      const worker = new Worker('./worker/worker/worker.js')
-
-      worker.postMessage({
-        type: 'pinning-service-v1',
-        payload: window.PINNING_ADDR
-      })
-
-      // A simple catchall to transliterate worker messages to document events, should make it easy
-      worker.onmessage = (event) => {
-        const message = event.data
-        document.dispatchEvent(new CustomEvent(message.type, { detail: message.payload }));
-      }
-
-      function createRandomLocalStorageData() {
-        localStorage.setItem('key1', Math.random() * 1000)
-        localStorage.setItem('key2', Math.random() * 1000)
-        localStorage.setItem('key3', Math.random() * 1000)
-
-        const randomData = JSON.stringify({
-          key1: localStorage.getItem('key1'),
-          key2: localStorage.getItem('key2'),
-          key3: localStorage.getItem('key3')
-        })
-
-        return randomData
       }
     </script>
   </head>
@@ -105,12 +24,13 @@
 
     <script>
       window.submitVerification = function(form) {
-        const to = form.elements[0].value
+        const to = form['to'].value
+        const channel = form['channel'].value
 
         fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/verify`, {
           headers: window.HTTP_API_HEADERS,
           method: 'POST',
-          body: JSON.stringify({ to })
+          body: JSON.stringify({ to, channel })
         })
           .then((res) => {
             // TODO: Proper error handling
@@ -141,62 +61,23 @@
 
             const uintify = (string) => Uint8Array.from(string.split(','))
             const rawKeys = await res.json()
-            window.myKeys = {
-                signing: {
-                  signPk: uintify(rawKeys.signing.signPk),
-                  signSk: uintify(rawKeys.signing.signSk),
-                },
-                publicKey: uintify(rawKeys.publicKey),
-                privateKey: uintify(rawKeys.privateKey),
-                securityVersion: rawKeys.securityVersion
-              }
-            worker.postMessage({
-              type: 'identity-v1',
-              payload: window.myKeys
-            })
+            document.querySelector('#keys').innerHTML = JSON.stringify(rawKeys)
           })
 
         return false;
       }
-
-      let localDataTimeout
-      document.addEventListener('authenticated-v1', (e) => {
-        document.querySelector('#step2').style.display = 'none';
-        document.querySelector('#step3a').style.display = 'block';
-
-        localDataTimeout = setTimeout(() => {
-          document.querySelector('#step3d').style.display = 'block';
-          const randomData = createRandomLocalStorageData()
-
-          worker.postMessage({
-            type: 'snapshot-v1',
-            payload: encrypt(randomData, window.myKeys)
-          })
-        }, 10000)
-      })
-
-      document.addEventListener('state-v1', (e) => {
-        clearTimeout(localDataTimeout)
-        const state = decrypt(e.detail.lastEntry[0].payload.value, window.myKeys)
-
-        Object.keys(state).map(key => {
-          localStorage.setItem(key, state[key])
-        })
-
-        document.querySelector('#foundData').innerHTML = JSON.stringify(state)
-
-        if(document.querySelector('#step3d').style.display !== 'block') {
-          document.querySelector('#step3b').style.display = 'block';
-        }
-
-        document.querySelector('#step4').style.display = 'block';
-      })
-
-      document.addEventListener('error-v1', (e) => { console.error(e.detail) })
     </script>
 
     <form id="step1" onsubmit="return submitVerification(this)">
-      <label>Input number for verification <input type="tel" value="" /></label>
+      <label>Input number for verification <input name="to" type="tel" /></label>
+
+      <label>SMS: <input type="radio" name="channel" value="sms" checked></label>
+      <label>Call: <input type="radio" name="channel" value="call"></label>
+      <label>
+        NULL (for testing, should default to sms):
+        <input type="radio" name="channel" value="">
+      </label>
+
       <input type="submit" value="Submit" />
     </form>
 
@@ -206,15 +87,9 @@
       <input type="submit" value="Submit" />
     </form>
 
-    <div id="step3a">Success! Looking for your data...</div>
-    <div id="step3b">...data found!</div>
-    <div id="step3d">
-      ...no data found! Writing some random data to
-      localStorage and sending the snapshot to OrbitDB.
-    </div>
-    <div id="step4">
-      The last snapshot of the DB was:
-      <pre id="foundData"></pre>
+    <div id="step3">
+      Your keys:
+      <pre id="keys"></pre>
     </div>
   </body>
 </html>

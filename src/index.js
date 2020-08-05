@@ -12,7 +12,7 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
   async function verify (req, res, next) {
     try {
       const to = req.body.to
-      const channel = !!req.body.channel || 'sms'
+      const channel = req.body.channel || 'sms'
       const { sid, status } = await verifications.create({ to, channel })
       res.json({ sid, status })
     } catch (err) { next(err) }

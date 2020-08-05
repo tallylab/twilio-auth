@@ -26,11 +26,12 @@
       window.submitVerification = function(form) {
         const to = form['to'].value
         const channel = form['channel'].value
+        const locale = form['locale'].value
 
         fetch(`http://${window.HTTP_API_HOST}:${window.HTTP_API_PORT}/verify`, {
           headers: window.HTTP_API_HEADERS,
           method: 'POST',
-          body: JSON.stringify({ to, channel })
+          body: JSON.stringify({ to, channel, locale })
         })
           .then((res) => {
             // TODO: Proper error handling
@@ -78,6 +79,11 @@
         <input type="radio" name="channel" value="">
       </label>
 
+      <br />
+      <label>Select Language
+        <select name="locale" id="select-language">
+        </select>
+      </label>
       <input type="submit" value="Submit" />
     </form>
 
@@ -91,5 +97,58 @@
       Your keys:
       <pre id="keys"></pre>
     </div>
+
+  <script>
+const select = document.getElementById("select-language");
+
+const languages = [
+  { text: "English", value: "en" },
+  { text: "Afrikaans", value: "af" },
+  { text: "Arabic", value: "ar" },
+  { text: "Catalan", value: "ca" },
+  { text: "Chinese", value: "zh" },
+  { text: "Chinese (Mandarin)", value: "zh-CN" },
+  { text: "Chinese (Cantonese)", value: "zh-HK" },
+  { text: "Croatian", value: "hr" },
+  { text: "Czech", value: "cs" },
+  { text: "Danish", value: "da" },
+  { text: "Dutch", value: "nl" },
+  { text: "English (British)", value: "en-GB" },
+  { text: "Finnish", value: "fi" },
+  { text: "French", value: "fr" },
+  { text: "German", value: "de" },
+  { text: "Greek", value: "el" },
+  { text: "Hebrew", value: "he" },
+  { text: "Hindi", value: "hi" },
+  { text: "Hungarian", value: "hu" },
+  { text: "Indonesian", value: "id" },
+  { text: "Italian", value: "it" },
+  { text: "Japanese", value: "ja" },
+  { text: "Korean", value: "ko" },
+  { text: "Malay", value: "ms" },
+  { text: "Norwegian", value: "nb" },
+  { text: "Polish", value: "pl" },
+  { text: "Portuguese - Brazil", value: "pt-BR" },
+  { text: "Portuguese", value: "pt" },
+  { text: "Romanian", value: "ro" },
+  { text: "Russian", value: "ru" },
+  { text: "Spanish", value: "es" },
+  { text: "Swedish", value: "sv" },
+  { text: "Tagalog", value: "tl" },
+  { text: "Thai", value: "th" },
+  { text: "Turkish", value: "tr" },
+  { text: "Vietnamese", value: "vi" }
+];
+
+
+for(var i = 0; i < languages.length; i++) {
+    var opt = languages[i];
+ 
+    var el = document.createElement("option");
+    el.textContent = opt.text;
+    el.value = opt.value;
+    select.appendChild(el);
+};
+  </script>
   </body>
 </html>

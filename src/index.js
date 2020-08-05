@@ -11,8 +11,10 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
 
   async function verify (req, res, next) {
     try {
-      const { to } = req.body
-      const { sid, status } = await verifications.create({ to, channel: 'sms' })
+      const to = req.body.to
+      const channel = req.body.channel || 'sms'
+      const locale = req.body.locale
+      const { sid, status } = await verifications.create({ to, channel, locale })
       res.json({ sid, status })
     } catch (err) { next(err) }
   }
@@ -30,7 +32,6 @@ const TallyLabIdentities = require('tallylab-orbitdb-identity-provider')
     try {
       const { to } = req.body
       const idProvider = new TallyLabIdentities().TallyLabIdentityProvider
-      console.log(to, SALT, to + SALT)
       const hash = CryptoJS.SHA256(to + SALT)
       const buffer = Buffer.from(hash.toString(CryptoJS.enc.Hex), 'hex')
       const tlKeys = idProvider.keygen(nacl, buffer)

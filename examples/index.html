@@ -78,7 +78,6 @@
         NULL (for testing, should default to sms):
         <input type="radio" name="channel" value="">
       </label>
-
       <br />
       <label>Select Language
         <select name="locale" id="select-language">
@@ -143,7 +142,7 @@ const languages = [
 
 for(var i = 0; i < languages.length; i++) {
     var opt = languages[i];
- 
+
     var el = document.createElement("option");
     el.textContent = opt.text;
     el.value = opt.value;

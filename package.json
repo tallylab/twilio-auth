@@ -28,7 +28,7 @@
     "orbit-db-keystore": "^0.3.4",
     "twilio": "^3.43.0",
     "elliptic": ">=6.5.4",
-    "node-forge": ">=0.10.0",
+    "node-forge": ">=1.0.0",
     "tallylab-orbitdb-identity-provider": "1.1.0"
   },
   "devDependencies": {
